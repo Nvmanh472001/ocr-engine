@@ -164,6 +164,7 @@ class DetResizeForTest(object):
             img, [ratio_h, ratio_w] = self.resize_image_type1(img)
         data["image"] = img
         data["shape"] = np.array([src_h, src_w, ratio_h, ratio_w])
+        print(f"rezize_data={data}")
         return data
 
     def resize_image_type1(self, img):

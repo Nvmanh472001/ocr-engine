@@ -1,13 +1,7 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import os
-import random
-
-# import paddle
-import signal
 import sys
-
-import numpy as np
 
 __dir__ = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.abspath(os.path.join(__dir__, "../..")))
