@@ -1,4 +1,7 @@
 import copy
+from typing import Any, Dict
+
+import torch.nn as nn
 
 # det loss
 from .det_db_loss import DBLoss
@@ -7,11 +10,11 @@ from .det_db_loss import DBLoss
 from .rec_ctc_loss import CTCLoss
 
 
-def build_loss(config):
+def build_loss(conf: Dict[str, Any]) -> nn.Module:
     support_dict = ["DBLoss", "CTLoss"]
 
-    config = copy.deepcopy(config)
-    module_name = config.pop("name")
+    conf = copy.deepcopy(conf)
+    module_name = conf.pop("name")
     assert module_name in support_dict, Exception("loss only support {}".format(support_dict))
-    module_class = eval(module_name)(**config)
+    module_class = eval(module_name)(**conf)
     return module_class

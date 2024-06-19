@@ -5,7 +5,13 @@ from torch import nn
 
 class BalanceLoss(nn.Module):
     def __init__(
-        self, balance_loss=True, main_loss_type="DiceLoss", negative_ratio=3, return_origin=False, eps=1e-6, **kwargs
+        self,
+        balance_loss=True,
+        main_loss_type="DiceLoss",
+        negative_ratio=3,
+        return_origin=False,
+        eps=1e-6,
+        **kwargs,
     ):
         """
         The BalanceLoss for Differentiable Binarization text detection
@@ -127,7 +133,14 @@ class DBLoss(nn.Module):
     """
 
     def __init__(
-        self, balance_loss=True, main_loss_type="DiceLoss", alpha=5, beta=10, ohem_ratio=3, eps=1e-6, **kwargs
+        self,
+        balance_loss=True,
+        main_loss_type="DiceLoss",
+        alpha=5,
+        beta=10,
+        ohem_ratio=3,
+        eps=1e-6,
+        **kwargs,
     ):
         super(DBLoss, self).__init__()
         self.alpha = alpha
@@ -137,7 +150,7 @@ class DBLoss(nn.Module):
         self.bce_loss = BalanceLoss(balance_loss=balance_loss, main_loss_type=main_loss_type, negative_ratio=ohem_ratio)
 
     def forward(self, predicts, labels):
-        predict_maps = predicts["res"]
+        predict_maps = predicts["maps"]
         label_threshold_map, label_threshold_mask, label_shrink_map, label_shrink_mask = labels[1:]
         shrink_maps = predict_maps[:, 0, :, :]
         threshold_maps = predict_maps[:, 1, :, :]
