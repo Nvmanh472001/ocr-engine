@@ -1,32 +1,30 @@
 import os
 import sys
+from typing import Literal
 
 import torch
 import torch.nn as nn
 
 
 class Im2Seq(nn.Module):
-    def __init__(self, in_channels, **kwargs):
+    def __init__(self, in_channels: int, **kwargs) -> None:
         super().__init__()
         self.out_channels = in_channels
 
-    def forward(self, x):
-        B, C, H, W = x.shape
-        # assert H == 1
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = x.squeeze(dim=2)
-        # x = x.transpose([0, 2, 1])  # paddle (NTC)(batch, width, channels)
         x = x.permute(0, 2, 1)
         return x
 
 
 class EncoderWithRNN_(nn.Module):
-    def __init__(self, in_channels, hidden_size):
+    def __init__(self, in_channels: int, hidden_size: int) -> None:
         super(EncoderWithRNN_, self).__init__()
         self.out_channels = hidden_size * 2
         self.rnn1 = nn.LSTM(in_channels, hidden_size, bidirectional=False, batch_first=True, num_layers=2)
         self.rnn2 = nn.LSTM(in_channels, hidden_size, bidirectional=False, batch_first=True, num_layers=2)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         self.rnn1.flatten_parameters()
         self.rnn2.flatten_parameters()
         out1, h1 = self.rnn1(x)
@@ -35,35 +33,41 @@ class EncoderWithRNN_(nn.Module):
 
 
 class EncoderWithRNN(nn.Module):
-    def __init__(self, in_channels, hidden_size):
+    def __init__(self, in_channels: int, hidden_size: int) -> None:
         super(EncoderWithRNN, self).__init__()
         self.out_channels = hidden_size * 2
         self.lstm = nn.LSTM(
-            in_channels, hidden_size, num_layers=2, batch_first=True, bidirectional=True
+            in_channels,
+            hidden_size,
+            num_layers=2,
+            batch_first=True,
+            bidirectional=True,
         )  # batch_first:=True
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x, _ = self.lstm(x)
         return x
 
 
 class EncoderWithFC(nn.Module):
-    def __init__(self, in_channels, hidden_size):
+    def __init__(self, in_channels: int, hidden_size: int) -> None:
         super(EncoderWithFC, self).__init__()
         self.out_channels = hidden_size
-        self.fc = nn.Linear(
-            in_channels,
-            hidden_size,
-            bias=True,
-        )
+        self.fc = nn.Linear(in_channels, hidden_size, bias=True)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.fc(x)
         return x
 
 
 class SequenceEncoder(nn.Module):
-    def __init__(self, in_channels, encoder_type, hidden_size=48, **kwargs):
+    def __init__(
+        self,
+        in_channels: int,
+        encoder_type: Literal["reshape", "fc", "rnn"],
+        hidden_size: int = 48,
+        **kwargs,
+    ) -> None:
         super(SequenceEncoder, self).__init__()
         self.encoder_reshape = Im2Seq(in_channels)
         self.out_channels = self.encoder_reshape.out_channels
@@ -72,7 +76,6 @@ class SequenceEncoder(nn.Module):
             self.only_reshape = True
         else:
             support_encoder_dict = {
-                "reshape": Im2Seq,
                 "fc": EncoderWithFC,
                 "rnn": EncoderWithRNN,
             }
@@ -84,7 +87,7 @@ class SequenceEncoder(nn.Module):
             self.out_channels = self.encoder.out_channels
             self.only_reshape = False
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.encoder_reshape(x)
         if not self.only_reshape:
             x = self.encoder(x)

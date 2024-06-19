@@ -1,14 +1,15 @@
 import os
 import sys
+from typing import Literal, Optional, Tuple
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from modeling.common import Activation
+from modeling.common import Activation, ActivationOptions
 
 
-def make_divisible(v, divisor=8, min_value=None):
+def make_divisible(v: int, divisor: int = 8, min_value: Optional[int] = None) -> int:
     if min_value is None:
         min_value = divisor
     new_v = max(min_value, int(v + divisor / 2) // divisor * divisor)
@@ -20,15 +21,15 @@ def make_divisible(v, divisor=8, min_value=None):
 class ConvBNLayer(nn.Module):
     def __init__(
         self,
-        in_channels,
-        out_channels,
-        kernel_size,
-        stride,
-        padding,
-        groups=1,
-        if_act=True,
-        act=None,
-        name=None,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int,
+        padding: int | Tuple[int, int],
+        groups: int = 1,
+        if_act: bool = True,
+        act: Optional[ActivationOptions] = None,
+        name: str = None,
     ):
         super(ConvBNLayer, self).__init__()
         self.if_act = if_act
@@ -42,13 +43,11 @@ class ConvBNLayer(nn.Module):
             bias=False,
         )
 
-        self.bn = nn.BatchNorm2d(
-            out_channels,
-        )
+        self.bn = nn.BatchNorm2d(out_channels)
         if self.if_act:
             self.act = Activation(act_type=act, inplace=True)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = self.conv(x)
         x = self.bn(x)
         if self.if_act:
@@ -57,7 +56,7 @@ class ConvBNLayer(nn.Module):
 
 
 class SEModule(nn.Module):
-    def __init__(self, in_channels, reduction=4, name=""):
+    def __init__(self, in_channels: int, reduction: int = 4, name: str = ""):
         super(SEModule, self).__init__()
         self.avg_pool = nn.AdaptiveAvgPool2d(1)
         self.conv1 = nn.Conv2d(
@@ -79,7 +78,7 @@ class SEModule(nn.Module):
         )
         self.hard_sigmoid = Activation(act_type="hard_sigmoid", inplace=True)
 
-    def forward(self, inputs):
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         outputs = self.avg_pool(inputs)
         outputs = self.conv1(outputs)
         outputs = self.relu1(outputs)
@@ -90,7 +89,17 @@ class SEModule(nn.Module):
 
 
 class ResidualUnit(nn.Module):
-    def __init__(self, in_channels, mid_channels, out_channels, kernel_size, stride, use_se, act=None, name=""):
+    def __init__(
+        self,
+        in_channels: int,
+        mid_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        stride: int,
+        use_se: bool,
+        act: Optional[ActivationOptions] = None,
+        name: str = "",
+    ):
         super(ResidualUnit, self).__init__()
         self.if_shortcut = stride == 1 and in_channels == out_channels
         self.if_se = use_se
@@ -116,8 +125,10 @@ class ResidualUnit(nn.Module):
             act=act,
             name=name + "_depthwise",
         )
+
         if self.if_se:
             self.mid_se = SEModule(mid_channels, name=name + "_se")
+
         self.linear_conv = ConvBNLayer(
             in_channels=mid_channels,
             out_channels=out_channels,
@@ -129,7 +140,7 @@ class ResidualUnit(nn.Module):
             name=name + "_linear",
         )
 
-    def forward(self, inputs):
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         x = self.expand_conv(inputs)
         x = self.bottleneck_conv(x)
         if self.if_se:
@@ -141,18 +152,10 @@ class ResidualUnit(nn.Module):
 
 
 class MobileNetV3(nn.Module):
-    def __init__(self, in_channels=3, model_name="large", scale=0.5, disable_se=False, **kwargs):
-        """
-        the MobilenetV3 backbone network for detection module.
-        Args:
-            params(dict): the super parameters for build network
-        """
-        super(MobileNetV3, self).__init__()
 
-        self.disable_se = disable_se
-
-        if model_name == "large":
-            cfg = [
+    cfg = {
+        "large": {
+            "layer_config": [
                 # k, exp, c,  se,     nl,  s,
                 [3, 16, 16, False, "relu", 1],
                 [3, 64, 24, False, "relu", 2],
@@ -169,10 +172,11 @@ class MobileNetV3(nn.Module):
                 [5, 672, 160, True, "hard_swish", 2],
                 [5, 960, 160, True, "hard_swish", 1],
                 [5, 960, 160, True, "hard_swish", 1],
-            ]
-            cls_ch_squeeze = 960
-        elif model_name == "small":
-            cfg = [
+            ],
+            "cls_ch_squeeze": 960,
+        },
+        "small": {
+            "layer_config": [
                 # k, exp, c,  se,     nl,  s,
                 [3, 16, 16, True, "relu", 2],
                 [3, 72, 24, False, "relu", 2],
@@ -185,13 +189,32 @@ class MobileNetV3(nn.Module):
                 [5, 288, 96, True, "hard_swish", 2],
                 [5, 576, 96, True, "hard_swish", 1],
                 [5, 576, 96, True, "hard_swish", 1],
-            ]
-            cls_ch_squeeze = 576
-        else:
-            raise NotImplementedError("mode[" + model_name + "_model] is not implemented!")
+            ],
+            "cls_ch_squeeze": 576,
+        },
+    }
 
-        supported_scale = [0.35, 0.5, 0.75, 1.0, 1.25]
-        assert scale in supported_scale, "supported scale are {} but input scale is {}".format(supported_scale, scale)
+    def __init__(
+        self,
+        in_channels: int = 3,
+        model_name: Literal["large", "small"] = "large",
+        scale: Literal["0.35", "0.5", "0.75", "1.0", "1.25"] = "0.5",
+        disable_se: bool = False,
+        **kwargs
+    ):
+        """
+        the MobilenetV3 backbone network for detection module.
+        Args:
+            params(dict): the super parameters for build network
+        """
+        super(MobileNetV3, self).__init__()
+
+        cfg = self.cfg[model_name]["layer_config"]
+        cls_ch_squeeze = self.cfg[model_name]["cls_ch_squeeze"]
+        scale = float(scale)
+
+        self.disable_se = disable_se
+
         inplanes = 16
         # conv1
         self.conv = ConvBNLayer(
@@ -231,6 +254,7 @@ class MobileNetV3(nn.Module):
             )
             inplanes = make_divisible(scale * c)
             i += 1
+
         block_list.append(
             ConvBNLayer(
                 in_channels=inplanes,
@@ -244,12 +268,11 @@ class MobileNetV3(nn.Module):
                 name="conv_last",
             )
         )
+
         self.stages.append(nn.Sequential(*block_list))
         self.out_channels.append(make_divisible(scale * cls_ch_squeeze))
-        # for i, stage in enumerate(self.stages):
-        #     self.add_sublayer(sublayer=stage, name="stage{}".format(i))
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> list[torch.Tensor]:
         x = self.conv(x)
         out_list = []
         for stage in self.stages:

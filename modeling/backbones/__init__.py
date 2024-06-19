@@ -12,22 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+from typing import Any, Dict, Literal
+
+import torch.nn as nn
+
 __all__ = ["build_backbone"]
 
 
-def build_backbone(config, model_type):
-    if model_type == "det":
-        from .det_mobilenet_v3 import MobileNetV3
+def build_backbone(config: Dict[str, Any], model_type: Literal["det", "rec"]) -> nn.Module:
+    match model_type:
+        case "det":
+            from .det_mobilenet_v3 import MobileNetV3
 
-        support_dict = ["MobileNetV3"]
-    elif model_type == "rec" or model_type == "cls":
-        from .rec_mobilenet_v3 import MobileNetV3
-        from .rec_mv1_enhance import MobileNetV1Enhance
+            support_dict = ["MobileNetV3"]
+        case "rec":
+            from .rec_mobilenet_v3 import MobileNetV3
+            from .rec_mv1_enhance import MobileNetV1Enhance
 
-        support_dict = ["MobileNetV1Enhance", "MobileNetV3"]
+            support_dict = ["MobileNetV1Enhance", "MobileNetV3"]
 
-    else:
-        raise NotImplementedError
+        case _:
+            raise NotImplementedError
 
     module_name = config.pop("name")
 

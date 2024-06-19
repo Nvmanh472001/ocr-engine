@@ -11,13 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Any, Dict
+
+import torch.nn as nn
 
 __all__ = ["build_head"]
 
 
-def build_head(config, **kwargs):
+def build_head(config: Dict[str, Any], **kwargs) -> nn.Module:
     # det head
-    from .det_db_head import DBHead, PFHeadLocal
+    from .det_db_head import DBHead
 
     # rec head
     from .rec_ctc_head import CTCHead

@@ -1,73 +1,88 @@
-
+from typing import Literal, TypeAlias
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class Hswish(nn.Module):
-    def __init__(self, inplace=True):
+    def __init__(self, inplace: bool = True):
         super(Hswish, self).__init__()
         self.inplace = inplace
 
-    def forward(self, x):
-        return x * F.relu6(x + 3., inplace=self.inplace) / 6.
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x * F.relu6(x + 3.0, inplace=self.inplace) / 6.0
+
 
 # out = max(0, min(1, slop*x+offset))
 # paddle.fluid.layers.hard_sigmoid(x, slope=0.2, offset=0.5, name=None)
 class Hsigmoid(nn.Module):
-    def __init__(self, inplace=True):
+    def __init__(self, inplace: bool = True):
         super(Hsigmoid, self).__init__()
         self.inplace = inplace
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         # torch: F.relu6(x + 3., inplace=self.inplace) / 6.
         # paddle: F.relu6(1.2 * x + 3., inplace=self.inplace) / 6.
-        return F.relu6(1.2 * x + 3., inplace=self.inplace) / 6.
+        return F.relu6(1.2 * x + 3.0, inplace=self.inplace) / 6.0
+
 
 class GELU(nn.Module):
-    def __init__(self, inplace=True):
+    def __init__(self, inplace: bool = True):
         super(GELU, self).__init__()
         self.inplace = inplace
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return torch.nn.functional.gelu(x)
 
 
 class Swish(nn.Module):
-    def __init__(self, inplace=True):
+    def __init__(self, inplace: bool = True):
         super(Swish, self).__init__()
         self.inplace = inplace
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         if self.inplace:
             x.mul_(torch.sigmoid(x))
             return x
         else:
-            return x*torch.sigmoid(x)
+            return x * torch.sigmoid(x)
+
+
+ActivationOptions: TypeAlias = Literal[
+    "relu",
+    "relu6",
+    "sigmoid",
+    "hard_sigmoid",
+    "hard_swish",
+    "leakyrelu",
+    "gelu",
+    "swish",
+]
 
 
 class Activation(nn.Module):
-    def __init__(self, act_type, inplace=True):
+    def __init__(self, act_type: ActivationOptions, inplace: bool = True):
         super(Activation, self).__init__()
-        act_type = act_type.lower()
-        if act_type == 'relu':
-            self.act = nn.ReLU(inplace=inplace)
-        elif act_type == 'relu6':
-            self.act = nn.ReLU6(inplace=inplace)
-        elif act_type == 'sigmoid':
-            raise NotImplementedError
-        elif act_type == 'hard_sigmoid':
-            self.act = Hsigmoid(inplace)#nn.Hardsigmoid(inplace=inplace)#Hsigmoid(inplace)#
-        elif act_type == 'hard_swish' or act_type == 'hswish':
-            self.act = Hswish(inplace=inplace)
-        elif act_type == 'leakyrelu':
-            self.act = nn.LeakyReLU(inplace=inplace)
-        elif act_type == 'gelu':
-            self.act = GELU(inplace=inplace)
-        elif act_type == 'swish':
-            self.act = Swish(inplace=inplace)
-        else:
-            raise NotImplementedError
+        match act_type:
+            case "relu":
+                self.act = nn.ReLU(inplace=inplace)
+            case "relu6":
+                self.act = nn.ReLU6(inplace=inplace)
+            case "sigmoid":
+                raise NotImplementedError
+            case "hard_sigmoid":
+                self.act = Hsigmoid(inplace)  # nn.Hardsigmoid(inplace=inplace)#Hsigmoid(inplace)#
+            case "hard_swish":
+                self.act = Hswish(inplace=inplace)
+            case "leakyrelu":
+                self.act = nn.LeakyReLU(inplace=inplace)
+            case "gelu":
+                self.act = GELU(inplace=inplace)
+            case "swish":
+                self.act = Swish(inplace=inplace)
+            case _:
+                raise NotImplementedError
 
-    def forward(self, inputs):
+    def forward(self, inputs: torch.Tensor) -> torch.Tensor:
         return self.act(inputs)

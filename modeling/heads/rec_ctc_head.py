@@ -1,5 +1,6 @@
 import os
 import sys
+from typing import Optional, Tuple
 
 import torch
 import torch.nn as nn
@@ -9,11 +10,11 @@ import torch.nn.functional as F
 class CTCHead(nn.Module):
     def __init__(
         self,
-        in_channels,
-        out_channels=6625,
-        fc_decay=0.0004,
-        mid_channels=None,
-        return_feats=False,
+        in_channels: int,
+        out_channels: int = 6625,
+        fc_decay: float = 0.0004,
+        mid_channels: Optional[int] = None,
+        return_feats: bool = False,
         **kwargs,
     ):
         super(CTCHead, self).__init__()
@@ -27,7 +28,11 @@ class CTCHead(nn.Module):
         self.mid_channels = mid_channels
         self.return_feats = return_feats
 
-    def forward(self, x, labels=None):
+    def forward(
+        self,
+        x: torch.Tensor,
+        data=None
+    ) -> torch.Tensor | Tuple[torch.Tensor, torch.Tensor]:
         if self.mid_channels is None:
             predicts = self.fc(x)
         else:

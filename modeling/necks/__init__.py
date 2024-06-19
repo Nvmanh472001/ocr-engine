@@ -12,16 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from typing import Any, Dict
+
+import torch.nn as nn
+
 __all__ = ["build_neck"]
 
 
-def build_neck(config):
-    from .db_fpn import DBFPN
+def build_neck(config: Dict[str, Any], **kwargs) -> nn.Module:
+    from .db_fpn import DBFPN, RSEFPN
     from .rnn import SequenceEncoder
 
-    support_dict = ["DBFPN", "SequenceEncoder"]
+    support_dict = ["DBFPN", "RSEFPN", "SequenceEncoder"]
 
     module_name = config.pop("name")
     assert module_name in support_dict, Exception("neck only support {}".format(support_dict))
-    module_class = eval(module_name)(**config)
+    module_class = eval(module_name)(**config, **kwargs)
     return module_class

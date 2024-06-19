@@ -7,6 +7,7 @@ from __future__ import absolute_import, division, print_function
 
 import itertools
 import math
+from typing import Optional
 
 import numpy as np
 import torch
@@ -14,7 +15,7 @@ from torch import nn
 from torch.nn import functional as F
 
 
-def grid_sample(input, grid, canvas=None):
+def grid_sample(input: torch.Tensor, grid: torch.Tensor, canvas: Optional[torch.Tensor] = None) -> torch.Tensor:
     input.stop_gradient = False
     output = F.grid_sample(input, grid, align_corners=True)
     if canvas is None:

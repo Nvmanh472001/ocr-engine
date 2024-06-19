@@ -3,14 +3,12 @@ import sys
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
-from modeling.backbones.det_mobilenet_v3 import ConvBNLayer
 from modeling.common import Activation
 
 
 class Head(nn.Module):
-    def __init__(self, in_channels, **kwargs):
+    def __init__(self, in_channels: int, **kwargs):
         super(Head, self).__init__()
         self.conv1 = nn.Conv2d(
             in_channels=in_channels,
@@ -30,7 +28,7 @@ class Head(nn.Module):
 
         self.conv3 = nn.ConvTranspose2d(in_channels=in_channels // 4, out_channels=1, kernel_size=2, stride=2)
 
-    def forward(self, x, return_f=False):
+    def forward(self, x: torch.Tensor, return_f: bool = False):
         x = self.conv1(x)
         x = self.conv_bn1(x)
         x = self.relu1(x)
@@ -54,7 +52,7 @@ class DBHead(nn.Module):
         params(dict): super parameters for build DB network
     """
 
-    def __init__(self, in_channels, k=50, **kwargs):
+    def __init__(self, in_channels: int, k: int = 50, **kwargs):
         super(DBHead, self).__init__()
         self.k = k
         binarize_name_list = [
@@ -76,10 +74,10 @@ class DBHead(nn.Module):
         self.binarize = Head(in_channels, **kwargs)  # binarize_name_list)
         self.thresh = Head(in_channels, **kwargs)  # thresh_name_list)
 
-    def step_function(self, x, y):
+    def step_function(self, x: torch.Tensor, y: torch.Tensor):
         return torch.reciprocal(1 + torch.exp(-self.k * (x - y)))
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor, data=None) -> torch.Tensor:
         shrink_maps = self.binarize(x)
         if not self.training:
             return {"maps": shrink_maps}

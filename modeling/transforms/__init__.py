@@ -11,16 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from typing import Any, Dict
+
+import torch.nn as nn
 
 __all__ = ["build_transform"]
 
 
-def build_transform(config):
+def build_transform(config: Dict[str, Any], **kwargs) -> nn.Module:
     from .tps import TPS
 
-    support_dict = ["TPS", "STN_ON", "TSRN", "TBSRN"]
+    support_dict = ["TPS"]
 
     module_name = config.pop("name")
     assert module_name in support_dict, Exception("transform only support {}".format(support_dict))
-    module_class = eval(module_name)(**config)
+    module_class = eval(module_name)(**config, **kwargs)
     return module_class
