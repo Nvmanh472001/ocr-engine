@@ -1,4 +1,5 @@
 Global:
+  debug: false
   use_gpu: true
   use_xpu: false
   use_mlu: false
@@ -13,13 +14,24 @@ Global:
   - 0
   - 2000
   cal_metric_during_train: false
-  pretrained_model: null
+  pretrained_model: ./ckpts/detection.pth
   checkpoints: null
   save_inference_dir: null
   use_visualdl: false
   infer_img: doc/imgs_en/img_10.jpg
   save_res_path: ./output/det_db/predicts_db.txt
   distributed: false
+Slim:
+  Pruning:
+    dummy_input:
+    - 1
+    - 3
+    - 960
+    - 960
+    strict_out_nodes: true
+    mark_unprunable:
+    - node-847
+  Quantization: null
 Architecture:
   model_type: det
   algorithm: DB
@@ -28,9 +40,11 @@ Architecture:
     name: MobileNetV3
     scale: 0.5
     model_name: large
+    disable_se: true
   Neck:
-    name: DBFPN
-    out_channels: 256
+    name: RSEFPN
+    out_channels: 96
+    shortcut: true
   Head:
     name: DBHead
     k: 50
@@ -43,13 +57,15 @@ Loss:
   ohem_ratio: 3
 Optimizer:
   name: Adam
-  beta1: 0.9
-  beta2: 0.999
-  lr:
-    learning_rate: 0.001
-  regularizer:
-    name: L2
-    factor: 0
+  lr: 0.001
+  weight_decay: 1.0e-07
+  target_group_sparsity: 0.7
+  pruning_steps: 1250
+  pruning_periods: 10
+  start_pruning_step: 1250
+LRScheduler:
+  name: CosineAnnealingLR
+  warmup_epoch: 2
 PostProcess:
   name: DBPostProcess
   thresh: 0.3
@@ -62,9 +78,9 @@ Metric:
 Train:
   dataset:
     name: SimpleDataSet
-    data_dir: ./train_data/icdar2015/text_localization/
+    data_dir: ./dataset/icdar2015/text_localization/
     label_file_list:
-    - ./train_data/icdar2015/text_localization/train_icdar2015_label.txt
+    - ./dataset/icdar2015/text_localization/train_icdar2015_label.txt
     ratio_list:
     - 1.0
     transforms:
@@ -89,8 +105,8 @@ Train:
             - 3
     - EastRandomCropData:
         size:
-        - 640
-        - 640
+        - 960
+        - 960
         max_tries: 50
         keep_ratio: true
     - MakeBorderMap:
@@ -122,23 +138,20 @@ Train:
   loader:
     shuffle: true
     drop_last: false
-    batch_size_per_card: 16
-    num_workers: 8
+    batch_size_per_card: 8
+    num_workers: 4
 Eval:
   dataset:
     name: SimpleDataSet
-    data_dir: ./train_data/icdar2015/text_localization/
+    data_dir: ./dataset/icdar2015/text_localization/
     label_file_list:
-    - ./train_data/icdar2015/text_localization/test_icdar2015_label.txt
+    - ./dataset/icdar2015/text_localization/test_icdar2015_label.txt
     transforms:
     - DecodeImage:
         img_mode: BGR
         channel_first: false
     - DetLabelEncode: null
-    - DetResizeForTest:
-        image_shape:
-        - 736
-        - 1280
+    - DetResizeForTest: null
     - NormalizeImage:
         scale: 1./255.
         mean:
@@ -161,7 +174,621 @@ Eval:
     shuffle: false
     drop_last: false
     batch_size_per_card: 1
-    num_workers: 8
-filename: det_mv3_db
-config: configs/det/det_mv3_db.yml
-eval: true
+    num_workers: 2
+filename: PP-OCRv3_det
+_initialized: true
+_explicit_bool: false
+_underscores_to_dashes: false
+_parsed: true
+extra_args: []
+argument_buffer:
+  help: !!python/tuple
+  - !!python/tuple
+    - -h
+    - --help
+  - action: help
+    default: ==SUPPRESS==
+    help: show this help message and exit
+_subparser_buffer: []
+class_variables:
+  config:
+    comment: ''
+  opt:
+    comment: ''
+  use_gpu:
+    comment: ''
+  use_mp:
+    comment: ''
+  use_dilation:
+    comment: ''
+  max_batch_size:
+    comment: ''
+  image_dir:
+    comment: ''
+  det_model_dir:
+    comment: ''
+  det_limit_side_len:
+    comment: ''
+  det_limit_type:
+    comment: ''
+  det_box_type:
+    comment: ''
+  det_db_thresh:
+    comment: ''
+  det_db_box_thresh:
+    comment: ''
+  det_db_unclip_ratio:
+    comment: ''
+  det_db_score_mode:
+    comment: ''
+  rec_model_dir:
+    comment: ''
+  rec_batch_num:
+    comment: ''
+  rec_image_shape:
+    comment: ''
+  rec_image_inverse:
+    comment: ''
+  rec_max_text_length:
+    comment: ''
+  rec_drop_score:
+    comment: ''
+  output:
+    comment: ''
+  save_crop_res:
+    comment: ''
+  crop_res_save_dir:
+    comment: ''
+  num_processes:
+    comment: ''
+  process_id:
+    comment: ''
+  show_log:
+    comment: ''
+_annotations:
+  config: &id001 !!python/name:builtins.str ''
+  opt: *id001
+  use_gpu: &id002 !!python/name:builtins.bool ''
+  use_mp: *id002
+  use_dilation: *id002
+  max_batch_size: &id004 !!python/name:builtins.int ''
+  image_dir: *id001
+  det_model_dir: *id001
+  det_limit_side_len: &id003 !!python/name:builtins.float ''
+  det_limit_type: *id001
+  det_box_type: *id001
+  det_db_thresh: *id003
+  det_db_box_thresh: *id003
+  det_db_unclip_ratio: *id003
+  det_db_score_mode: *id001
+  rec_model_dir: *id001
+  rec_batch_num: *id004
+  rec_image_shape: *id001
+  rec_image_inverse: *id002
+  rec_max_text_length: *id004
+  rec_drop_score: *id003
+  output: *id001
+  save_crop_res: *id002
+  crop_res_save_dir: *id001
+  num_processes: *id004
+  process_id: *id004
+  show_log: *id002
+description: null
+argument_default: null
+prefix_chars: '-'
+conflict_handler: error
+_registries: &id006
+  action:
+    null: &id005 !!python/name:argparse._StoreAction ''
+    store: *id005
+    store_const: !!python/name:argparse._StoreConstAction ''
+    store_true: !!python/name:argparse._StoreTrueAction ''
+    store_false: !!python/name:argparse._StoreFalseAction ''
+    append: !!python/name:argparse._AppendAction ''
+    append_const: !!python/name:argparse._AppendConstAction ''
+    count: !!python/name:argparse._CountAction ''
+    help: !!python/name:argparse._HelpAction ''
+    version: !!python/name:argparse._VersionAction ''
+    parsers: !!python/name:argparse._SubParsersAction ''
+    extend: !!python/name:argparse._ExtendAction ''
+  type:
+    null: !!python/name:argparse.identity ''
+_actions: &id007
+- &id008 !!python/object:argparse._StoreAction
+  option_strings:
+  - --config
+  dest: config
+  nargs: null
+  const: null
+  default: null
+  type: *id001
+  choices: null
+  required: false
+  help: '(str, default=None) '
+  metavar: null
+  container: &id009 !!python/object:argparse._ArgumentGroup
+    description: null
+    argument_default: null
+    prefix_chars: '-'
+    conflict_handler: error
+    _registries: *id006
+    _actions: *id007
+    _option_string_actions: &id037
+      --config: *id008
+      --opt: &id011 !!python/object:argparse._StoreAction
+        option_strings:
+        - --opt
+        dest: opt
+        nargs: null
+        const: null
+        default: null
+        type: *id001
+        choices: null
+        required: false
+        help: '(str, default=None) '
+        metavar: null
+        container: *id009
+      --use_gpu: &id012 !!python/object:argparse._StoreTrueAction
+        option_strings:
+        - --use_gpu
+        dest: use_gpu
+        nargs: 0
+        const: true
+        default: false
+        type: null
+        choices: null
+        required: false
+        help: '(bool, default=False) '
+        metavar: null
+        container: *id009
+      --use_mp: &id013 !!python/object:argparse._StoreTrueAction
+        option_strings:
+        - --use_mp
+        dest: use_mp
+        nargs: 0
+        const: true
+        default: false
+        type: null
+        choices: null
+        required: false
+        help: '(bool, default=False) '
+        metavar: null
+        container: *id009
+      --use_dilation: &id014 !!python/object:argparse._StoreTrueAction
+        option_strings:
+        - --use_dilation
+        dest: use_dilation
+        nargs: 0
+        const: true
+        default: false
+        type: null
+        choices: null
+        required: false
+        help: '(bool, default=False) '
+        metavar: null
+        container: *id009
+      --max_batch_size: &id015 !!python/object:argparse._StoreAction
+        option_strings:
+        - --max_batch_size
+        dest: max_batch_size
+        nargs: null
+        const: null
+        default: 10
+        type: *id004
+        choices: null
+        required: false
+        help: '(int, default=10) '
+        metavar: null
+        container: *id009
+      --image_dir: &id016 !!python/object:argparse._StoreAction
+        option_strings:
+        - --image_dir
+        dest: image_dir
+        nargs: null
+        const: null
+        default: null
+        type: *id001
+        choices: null
+        required: false
+        help: '(str, default=None) '
+        metavar: null
+        container: *id009
+      --det_model_dir: &id017 !!python/object:argparse._StoreAction
+        option_strings:
+        - --det_model_dir
+        dest: det_model_dir
+        nargs: null
+        const: null
+        default: ckpts/onnx/det
+        type: *id001
+        choices: null
+        required: false
+        help: '(str, default=ckpts/onnx/det) '
+        metavar: null
+        container: *id009
+      --det_limit_side_len: &id018 !!python/object:argparse._StoreAction
+        option_strings:
+        - --det_limit_side_len
+        dest: det_limit_side_len
+        nargs: null
+        const: null
+        default: 960
+        type: *id003
+        choices: null
+        required: false
+        help: '(float, default=960) '
+        metavar: null
+        container: *id009
+      --det_limit_type: &id019 !!python/object:argparse._StoreAction
+        option_strings:
+        - --det_limit_type
+        dest: det_limit_type
+        nargs: null
+        const: null
+        default: max
+        type: *id001
+        choices: null
+        required: false
+        help: '(str, default=max) '
+        metavar: null
+        container: *id009
+      --det_box_type: &id020 !!python/object:argparse._StoreAction
+        option_strings:
+        - --det_box_type
+        dest: det_box_type
+        nargs: null
+        const: null
+        default: quad
+        type: *id001
+        choices: null
+        required: false
+        help: '(str, default=quad) '
+        metavar: null
+        container: *id009
+      --det_db_thresh: &id021 !!python/object:argparse._StoreAction
+        option_strings:
+        - --det_db_thresh
+        dest: det_db_thresh
+        nargs: null
+        const: null
+        default: 0.3
+        type: *id003
+        choices: null
+        required: false
+        help: '(float, default=0.3) '
+        metavar: null
+        container: *id009
+      --det_db_box_thresh: &id022 !!python/object:argparse._StoreAction
+        option_strings:
+        - --det_db_box_thresh
+        dest: det_db_box_thresh
+        nargs: null
+        const: null
+        default: 0.6
+        type: *id003
+        choices: null
+        required: false
+        help: '(float, default=0.6) '
+        metavar: null
+        container: *id009
+      --det_db_unclip_ratio: &id023 !!python/object:argparse._StoreAction
+        option_strings:
+        - --det_db_unclip_ratio
+        dest: det_db_unclip_ratio
+        nargs: null
+        const: null
+        default: 1.5
+        type: *id003
+        choices: null
+        required: false
+        help: '(float, default=1.5) '
+        metavar: null
+        container: *id009
+      --det_db_score_mode: &id024 !!python/object:argparse._StoreAction
+        option_strings:
+        - --det_db_score_mode
+        dest: det_db_score_mode
+        nargs: null
+        const: null
+        default: fast
+        type: *id001
+        choices: null
+        required: false
+        help: '(str, default=fast) '
+        metavar: null
+        container: *id009
+      --rec_model_dir: &id025 !!python/object:argparse._StoreAction
+        option_strings:
+        - --rec_model_dir
+        dest: rec_model_dir
+        nargs: null
+        const: null
+        default: ckpts/onnx/rec
+        type: *id001
+        choices: null
+        required: false
+        help: '(str, default=ckpts/onnx/rec) '
+        metavar: null
+        container: *id009
+      --rec_batch_num: &id026 !!python/object:argparse._StoreAction
+        option_strings:
+        - --rec_batch_num
+        dest: rec_batch_num
+        nargs: null
+        const: null
+        default: 6
+        type: *id004
+        choices: null
+        required: false
+        help: '(int, default=6) '
+        metavar: null
+        container: *id009
+      --rec_image_shape: &id027 !!python/object:argparse._StoreAction
+        option_strings:
+        - --rec_image_shape
+        dest: rec_image_shape
+        nargs: null
+        const: null
+        default: 3, 48, 320
+        type: *id001
+        choices: null
+        required: false
+        help: '(str, default=3, 48, 320) '
+        metavar: null
+        container: *id009
+      --rec_image_inverse: &id028 !!python/object:argparse._StoreFalseAction
+        option_strings:
+        - --rec_image_inverse
+        dest: rec_image_inverse
+        nargs: 0
+        const: false
+        default: true
+        type: null
+        choices: null
+        required: false
+        help: '(bool, default=True) '
+        metavar: null
+        container: *id009
+      --rec_max_text_length: &id029 !!python/object:argparse._StoreAction
+        option_strings:
+        - --rec_max_text_length
+        dest: rec_max_text_length
+        nargs: null
+        const: null
+        default: 25
+        type: *id004
+        choices: null
+        required: false
+        help: '(int, default=25) '
+        metavar: null
+        container: *id009
+      --rec_drop_score: &id030 !!python/object:argparse._StoreAction
+        option_strings:
+        - --rec_drop_score
+        dest: rec_drop_score
+        nargs: null
+        const: null
+        default: 0.5
+        type: *id003
+        choices: null
+        required: false
+        help: '(float, default=0.5) '
+        metavar: null
+        container: *id009
+      --output: &id031 !!python/object:argparse._StoreAction
+        option_strings:
+        - --output
+        dest: output
+        nargs: null
+        const: null
+        default: ./inference_results
+        type: *id001
+        choices: null
+        required: false
+        help: '(str, default=./inference_results) '
+        metavar: null
+        container: *id009
+      --save_crop_res: &id032 !!python/object:argparse._StoreTrueAction
+        option_strings:
+        - --save_crop_res
+        dest: save_crop_res
+        nargs: 0
+        const: true
+        default: false
+        type: null
+        choices: null
+        required: false
+        help: '(bool, default=False) '
+        metavar: null
+        container: *id009
+      --crop_res_save_dir: &id033 !!python/object:argparse._StoreAction
+        option_strings:
+        - --crop_res_save_dir
+        dest: crop_res_save_dir
+        nargs: null
+        const: null
+        default: ./output
+        type: *id001
+        choices: null
+        required: false
+        help: '(str, default=./output) '
+        metavar: null
+        container: *id009
+      --num_processes: &id034 !!python/object:argparse._StoreAction
+        option_strings:
+        - --num_processes
+        dest: num_processes
+        nargs: null
+        const: null
+        default: 1
+        type: *id004
+        choices: null
+        required: false
+        help: '(int, default=1) '
+        metavar: null
+        container: *id009
+      --process_id: &id035 !!python/object:argparse._StoreAction
+        option_strings:
+        - --process_id
+        dest: process_id
+        nargs: null
+        const: null
+        default: 0
+        type: *id004
+        choices: null
+        required: false
+        help: '(int, default=0) '
+        metavar: null
+        container: *id009
+      --show_log: &id036 !!python/object:argparse._StoreFalseAction
+        option_strings:
+        - --show_log
+        dest: show_log
+        nargs: 0
+        const: false
+        default: true
+        type: null
+        choices: null
+        required: false
+        help: '(bool, default=True) '
+        metavar: null
+        container: *id009
+      -h: &id010 !!python/object:argparse._HelpAction
+        option_strings:
+        - -h
+        - --help
+        dest: help
+        nargs: 0
+        const: null
+        default: ==SUPPRESS==
+        type: null
+        choices: null
+        required: false
+        help: show this help message and exit
+        metavar: null
+        container: *id009
+      --help: *id010
+    _action_groups: []
+    _mutually_exclusive_groups: &id038 []
+    _defaults: &id039 {}
+    _negative_number_matcher: &id040 !!python/object/apply:re._compile
+    - ^-\d+$|^-\d*\.\d+$
+    - 32
+    _has_negative_number_optionals: &id041 []
+    title: options
+    _group_actions:
+    - *id008
+    - *id011
+    - *id012
+    - *id013
+    - *id014
+    - *id015
+    - *id016
+    - *id017
+    - *id018
+    - *id019
+    - *id020
+    - *id021
+    - *id022
+    - *id023
+    - *id024
+    - *id025
+    - *id026
+    - *id027
+    - *id028
+    - *id029
+    - *id030
+    - *id031
+    - *id032
+    - *id033
+    - *id034
+    - *id035
+    - *id036
+    - *id010
+- *id011
+- *id012
+- *id013
+- *id014
+- *id015
+- *id016
+- *id017
+- *id018
+- *id019
+- *id020
+- *id021
+- *id022
+- *id023
+- *id024
+- *id025
+- *id026
+- *id027
+- *id028
+- *id029
+- *id030
+- *id031
+- *id032
+- *id033
+- *id034
+- *id035
+- *id036
+- *id010
+_option_string_actions: *id037
+_action_groups:
+- &id042 !!python/object:argparse._ArgumentGroup
+  description: null
+  argument_default: null
+  prefix_chars: '-'
+  conflict_handler: error
+  _registries: *id006
+  _actions: *id007
+  _option_string_actions: *id037
+  _action_groups: []
+  _mutually_exclusive_groups: *id038
+  _defaults: *id039
+  _negative_number_matcher: *id040
+  _has_negative_number_optionals: *id041
+  title: positional arguments
+  _group_actions: []
+- *id009
+_mutually_exclusive_groups: *id038
+_defaults: *id039
+_negative_number_matcher: *id040
+_has_negative_number_optionals: *id041
+prog: train.py
+usage: null
+epilog: null
+formatter_class: !!python/name:argparse.HelpFormatter ''
+fromfile_prefix_chars: null
+add_help: true
+allow_abbrev: true
+exit_on_error: true
+_positionals: *id042
+_optionals: *id009
+_subparsers: null
+args_from_configs: []
+config: configs/det/PP-OCRv3_det.yml
+use_gpu: false
+use_mp: false
+use_dilation: false
+max_batch_size: 10
+image_dir: null
+det_model_dir: ckpts/onnx/det
+det_limit_side_len: 960
+det_limit_type: max
+det_box_type: quad
+det_db_thresh: 0.3
+det_db_box_thresh: 0.6
+det_db_unclip_ratio: 1.5
+det_db_score_mode: fast
+rec_model_dir: ckpts/onnx/rec
+rec_batch_num: 6
+rec_image_shape: 3, 48, 320
+rec_image_inverse: true
+rec_max_text_length: 25
+rec_drop_score: 0.5
+output: ./inference_results
+save_crop_res: false
+crop_res_save_dir: ./output
+num_processes: 1
+process_id: 0
+show_log: true

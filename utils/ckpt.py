@@ -69,4 +69,4 @@ def load_ckpt(model, cfg, optimizer=None, lr_scheduler=None, logger=None):
 
 def load_pretrained_params(model, pretrained_model):
     checkpoint = torch.load(pretrained_model, map_location=torch.device("cpu"))
-    model.load_state_dict(checkpoint["state_dict"], strict=False)
+    model.load_state_dict(checkpoint, strict=True)
