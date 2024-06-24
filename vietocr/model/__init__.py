@@ -1,0 +1,1 @@
+from .transformerocr import VietOCR
