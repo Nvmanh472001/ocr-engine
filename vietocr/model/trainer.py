@@ -1,3 +1,4 @@
+import copy
 import os
 import time
 
@@ -5,23 +6,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch_pruning as tp
-import torchvision
-import yaml
-from einops import rearrange
 from PIL import Image
 from torch import nn
-from torch.optim import SGD, Adam, AdamW
-from torch.optim.lr_scheduler import CosineAnnealingLR, CyclicLR, OneCycleLR
+from torch.optim import Adam, AdamW
 from torch.utils.data import DataLoader
 
-from vietocr.loader.aug import ImgAugTransform, ImgAugTransformV2
+from vietocr.loader.aug import ImgAugTransformV2
 from vietocr.loader.dataloader import ClusterRandomSampler, Collator, OCRDataset
 from vietocr.loader.dataloader_v1 import DataGen
+from vietocr.optim import CosineAnnealingLR
 from vietocr.optim.labelsmoothingloss import LabelSmoothingLoss
-from vietocr.optim.optim import ScheduledOptim
 from vietocr.tool.logger import Logger
 from vietocr.tool.translate import batch_translate_beam_search, build_model, translate
-from vietocr.tool.utils import compute_accuracy, download_weights
+from vietocr.tool.utils import compute_accuracy
 
 
 class Trainer:
@@ -82,10 +79,10 @@ class Trainer:
         self.iter = 0
 
         self.optimizer = AdamW(self.model.parameters(), betas=(0.9, 0.98), eps=1e-09)
-        self.scheduler = CosineAnnealingLR(
-            self.optimizer,
-            **config["optimizer"],
-        )
+
+        lr_config = copy.deepcopy(config["lr_scheduler"])
+        lr_config.update({"epochs": self.num_epochs, "step_each_epoch": len(self.train_gen)})
+        self.scheduler = CosineAnnealingLR(**lr_config)(optimizer=self.optimizer)
 
         self.criterion = LabelSmoothingLoss(len(self.vocab), padding_idx=self.vocab.pad, smoothing=0.1)
         self.train_losses = []
@@ -128,8 +125,10 @@ class Trainer:
                     val_loss = self.validate()
                     acc_full_seq, acc_per_char = self.precision(self.metrics)
 
-                    info = ("epoch: {:02d} - iter: {:06d} - valid loss: {:.3f} - acc full seq: {:.4f} - acc per char: "
-                            "{:.4f}").format(
+                    info = (
+                        "epoch: {:02d} - iter: {:06d} - valid loss: {:.3f} - acc full seq: {:.4f} - acc per char: "
+                        "{:.4f}"
+                    ).format(
                         epoch,
                         self.iter,
                         val_loss,

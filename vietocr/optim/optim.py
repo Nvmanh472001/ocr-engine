@@ -1,58 +1,18 @@
-class ScheduledOptim():
-    '''A simple wrapper class for learning rate scheduling'''
-
-    def __init__(self, optimizer, d_model, init_lr, n_warmup_steps):
-        assert n_warmup_steps > 0, 'must be greater than 0'
-
-        self._optimizer = optimizer
-        self.init_lr = init_lr
-        self.d_model = d_model
-        self.n_warmup_steps = n_warmup_steps
-        self.n_steps = 0
+from torch.optim import lr_scheduler
 
 
-    def step(self):
-        "Step with the inner optimizer"
-        self._update_learning_rate()
-        self._optimizer.step()
+class CosineAnnealingLR(object):
+    def __init__(self, epochs, step_each_epoch, warmup_epoch=0, last_epoch=-1, **kwargs):
+        super(CosineAnnealingLR, self).__init__()
+        self.epochs = epochs * step_each_epoch
+        self.last_epoch = last_epoch
+        self.warmup_epoch = warmup_epoch * step_each_epoch
 
+    def __call__(self, optimizer):
+        return lr_scheduler.LambdaLR(optimizer, self.lambda_func, self.last_epoch)
 
-    def zero_grad(self):
-        "Zero out the gradients with the inner optimizer"
-        self._optimizer.zero_grad()
-
-
-    def _get_lr_scale(self):
-        d_model = self.d_model
-        n_steps, n_warmup_steps = self.n_steps, self.n_warmup_steps
-        return (d_model ** -0.5) * min(n_steps ** (-0.5), n_steps * n_warmup_steps ** (-1.5))
-
-    def state_dict(self):
-        optimizer_state_dict = {
-            'init_lr':self.init_lr,
-            'd_model':self.d_model,
-            'n_warmup_steps':self.n_warmup_steps,
-            'n_steps':self.n_steps,
-            '_optimizer':self._optimizer.state_dict(),
-        }
-        
-        return optimizer_state_dict
-    
-    def load_state_dict(self, state_dict):
-        self.init_lr = state_dict['init_lr']
-        self.d_model = state_dict['d_model']
-        self.n_warmup_steps = state_dict['n_warmup_steps']
-        self.n_steps = state_dict['n_steps']
-        
-        self._optimizer.load_state_dict(state_dict['_optimizer'])
-        
-    def _update_learning_rate(self):
-        ''' Learning rate scheduling per step '''
-
-        self.n_steps += 1
-
-        for param_group in self._optimizer.param_groups:
-            lr = self.init_lr*self._get_lr_scale()
-            self.lr = lr
-
-            param_group['lr'] = lr
+    def lambda_func(self, current_step, num_cycles=0.5):
+        if current_step < self.warmup_epoch:
+            return float(current_step) / float(max(1, self.warmup_epoch))
+        progress = float(current_step - self.warmup_epoch) / float(max(1, self.epochs - self.warmup_epoch))
+        return max(0.0, 0.5 * (1.0 + math.cos(math.pi * float(num_cycles) * 2.0 * progress)))
