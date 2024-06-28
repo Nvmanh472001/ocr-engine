@@ -118,20 +118,20 @@ def main():
 
     slim_mode = config["slim"].pop("mode")
 
-    imp = tp.importance.GroupHessianImportance()
-    pruner = tp.pruner.MetaPruner(
+    imp = tp.importance.MagnitudeImportance(p=1)
+    pruner = tp.pruner.MagnitudePruner(
         model,
         example_inputs,
         ignored_layers=ignored_layers,
         unwrapped_parameters=unwrapped_parameters,
         channel_groups=channel_groups,
-        num_heads=num_heads,
+        # num_heads=num_heads,
         importance=imp,
         **config["slim"],
     )
 
-    model.zero_grad()
-    imp.zero_grad()
+    for idx, g in enumerate(pruner.step(interactive=1)):
+        g.prune()
 
     train_loader, valid_loader = load_dataloader(cfg=config, vocab=vocab)
 
@@ -177,8 +177,6 @@ def main():
 
         total_loss += loss
         train_losses.append((it, loss))
-
-        imp.accumulate_grad(model)
 
         if it % print_every == 0:
             info = "iter: {:06d} - train loss: {:.3f} - lr: {:.2e} - load time: {:.2f} - gpu time: {:.2f}".format(

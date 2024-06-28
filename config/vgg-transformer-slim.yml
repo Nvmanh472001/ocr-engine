@@ -2,7 +2,7 @@
 vocab: 'aAàÀảẢãÃáÁạẠăĂằẰẳẲẵẴắẮặẶâÂầẦẩẨẫẪấẤậẬbBcCdDđĐeEèÈẻẺẽẼéÉẹẸêÊềỀểỂễỄếẾệỆfFgGhHiIìÌỉỈĩĨíÍịỊjJkKlLmMnNoOòÒỏỎõÕóÓọỌôÔồỒổỔỗỖốỐộỘơƠờỜởỞỡỠớỚợỢpPqQrRsStTuUùÙủỦũŨúÚụỤưƯừỪửỬữỮứỨựỰvVwWxXyYỳỲỷỶỹỸýÝỵỴzZ0123456789!"#$%&''()*+,-./:;<=>?@[\]^_`{|}~ '
 
 # cpu, cuda, cuda:0
-device: cuda:0
+device: mps
 
 pretrain: ./ckpts/vgg_transformer.pth
 
@@ -64,8 +64,8 @@ dataset:
     image_max_width: 512
 
 dataloader:
-    batch_size: 128
-    num_workers: 4
+    batch_size: 32
+    num_workers: 0
     pin_memory: True
 
 aug:
@@ -81,7 +81,5 @@ slim:
     iterative_steps: 1
     pruning_ratio: 0.7
     global_pruning: true
-    prune_num_heads: False
-    prune_head_dims: true
 quiet: False
 # for training
